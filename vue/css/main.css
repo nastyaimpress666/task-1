@@ -93,3 +93,12 @@ button:disabled {
     color: #666666;
     cursor: not-allowed;
 }
+.sale-message {
+    color: #e74c3c;
+    font-weight: bold;
+    font-size: 1.2em;
+    margin: 10px 0;
+    padding: 5px;
+    background-color: #fdf0ed;
+    border-radius: 4px;
+}
