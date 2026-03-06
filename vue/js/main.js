@@ -22,18 +22,12 @@ Vue.component('product', {
             <div class="product-info">
                 <p class="sale-message">{{ sale }}</p>
                 <h1>{{ title }}</h1>
-
-                <div class="cart">
-                    <p>Cart({{ cart }})</p>
-                </div>
-
                 <p v-if="inStock">In Stock</p>
                 <p v-else :class="{ outOfStock: !inStock }">Out of Stock</p>
                 
                 <p>Shipping: {{ shipping }}</p>
 
                 <h3>Details:</h3>
-                <!-- ИСПОЛЬЗУЕМ КОМПОНЕНТ product-details -->
                 <product-details :details="details"></product-details>
                 
                 <h3>Colors:</h3>
@@ -58,7 +52,11 @@ Vue.component('product', {
                     Add to cart
                 </button>
 
-                <button @click="removeFromCart" :disabled="cart === 0">
+                <button 
+                    @click="removeFromCart" 
+                    :disabled="!inStock"
+                    :class="{ disabledButton: !inStock }"
+                >
                     Remove from cart
                 </button>
 
@@ -81,7 +79,6 @@ Vue.component('product', {
             altText: "A pair of socks",
             link: "https://www.amazon.com/s/ref=nb_sb_noss?url=search-alias%3Daps&field-keywords=socks",
             onSale: true,
-            cart: 0,
             details: ['80% cotton', '20% polyester', 'Gender-neutral'],
             variants: [
                 {
@@ -104,15 +101,15 @@ Vue.component('product', {
     
     methods: {
         addToCart() {
-            this.cart += 1
+            this.$emit('add-to-cart', this.variants[this.selectedVariant].variantId);
         },
+        
+        removeFromCart() {
+            this.$emit('remove-from-cart', this.variants[this.selectedVariant].variantId);
+        },
+        
         updateProduct(index) {
             this.selectedVariant = index;
-        },
-        removeFromCart() {
-            if (this.cart > 0) {
-                this.cart -= 1;
-            }
         }
     },
 
@@ -147,6 +144,21 @@ Vue.component('product', {
 let app = new Vue({
     el: '#app',
     data: {
-        premium: true 
+        premium: true,
+        cart: []  
+    },
+    methods: {
+        updateCart(id) {
+            this.cart.push(id);
+            console.log('Добавлен товар с id:', id, 'Корзина:', this.cart);
+        },
+        
+        removeFromCart(id) {
+            const index = this.cart.indexOf(id);
+            if (index !== -1) {
+                this.cart.splice(index, 1);
+                console.log('Удален товар с id:', id, 'Корзина:', this.cart);
+            }
+        }
     }
 });
