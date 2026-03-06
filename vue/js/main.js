@@ -1,4 +1,5 @@
-let eventBus = new Vue()
+let eventBus = new Vue();
+
 Vue.component('product-details', {
     props: {
         details: {
@@ -72,8 +73,8 @@ Vue.component('product-review', {
             name: null,
             review: null,
             rating: null,
-            recommend: null,  
-            errors: []         
+            recommend: null,
+            errors: []
         }
     },
     
@@ -83,21 +84,94 @@ Vue.component('product-review', {
             if(!this.name) this.errors.push("Name required.");
             if(!this.review) this.errors.push("Review required.");
             if(!this.rating) this.errors.push("Rating required.");
-            if(!this.recommend) this.errors.push("Recommendation required."); 
+            if(!this.recommend) this.errors.push("Recommendation required.");
+            
             if(!this.errors.length) {
                 let productReview = {
                     name: this.name,
                     review: this.review,
                     rating: this.rating,
-                    recommend: this.recommend  
+                    recommend: this.recommend
                 }
-
-                this.$emit('review-submitted', productReview);
+                
+                eventBus.$emit('review-submitted', productReview);
+                
                 this.name = null;
                 this.review = null;
                 this.rating = null;
                 this.recommend = null;
             }
+        }
+    }
+});
+
+Vue.component('product-tabs', {
+    props: {
+        reviews: {
+            type: Array,
+            required: true
+        },
+        details: {
+            type: Array,
+            required: true
+        },
+        shipping: {
+            type: String,
+            required: true
+        }
+    },
+    template: `
+        <div class="tabs-container">
+            <ul class="tab-headers">
+                <span 
+                    class="tab" 
+                    v-for="(tab, index) in tabs" 
+                    :key="index"
+                    :class="{ activeTab: selectedTab === tab }"
+                    @click="selectedTab = tab"
+                >{{ tab }}</span>
+            </ul>
+            
+            <div v-show="selectedTab === 'Reviews'" class="tab-content">
+                <p v-if="!reviews.length">There are no reviews yet.</p>
+                <ul v-else>
+                    <li v-for="review in reviews" :key="review.name + review.rating">
+                        <p><strong>{{ review.name }}</strong></p>
+                        <p>Rating: {{ review.rating }}/5</p>
+                        <p>Recommend: {{ review.recommend === 'yes' ? 'Yes' : 'No' }}</p>
+                        <p>{{ review.review }}</p>
+                        <hr>
+                    </li>
+                </ul>
+            </div>
+
+            <div v-show="selectedTab === 'Make a Review'" class="tab-content">
+                <product-review></product-review>
+            </div>
+            
+            <div v-show="selectedTab === 'Details'" class="tab-content">
+                <h3>Product Details</h3>
+                <product-details :details="details"></product-details>
+                <p><strong>Available Sizes:</strong></p>
+                <ul>
+                    <li v-for="size in sizes" :key="size">{{ size }}</li>
+                </ul>
+           
+            </div>
+            <div v-show="selectedTab === 'Shipping'" class="tab-content">
+                <h3>Shipping Information</h3>
+                <p>Shipping cost: <strong>{{ shipping }}</strong></p>
+                <p>Free shipping for premium members!</p>
+                <p>Standard delivery: 3-5 business days</p>
+                <p>Express delivery: 1-2 business days (+$5.99)</p>
+            </div>
+        </div>
+    `,
+    data() {
+        return {
+            tabs: ['Reviews', 'Make a Review', 'Details', 'Shipping'],
+            selectedTab: 'Reviews',
+            sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] 
         }
     }
 });
@@ -118,9 +192,6 @@ Vue.component('product', {
                 
                 <p>Shipping: {{ shipping }}</p>
 
-                <h3>Details:</h3>
-                <product-details :details="details"></product-details>
-                
                 <h3>Colors:</h3>
                 <div
                     class="color-box"
@@ -129,11 +200,6 @@ Vue.component('product', {
                     :style="{ backgroundColor: variant.variantColor }"
                     @mouseover="updateProduct(index)"
                 ></div>
-
-                <h3>Available Sizes:</h3>
-                <ul>
-                    <li v-for="size in sizes" :key="size">{{ size }}</li>
-                </ul>
                 
                 <button
                     @click="addToCart"
@@ -152,20 +218,12 @@ Vue.component('product', {
                 </button>
 
                 <a :href="link">More products like this</a>
-                <div class="reviews">
-                    <h2>Reviews</h2>
-                    <p v-if="!reviews.length">There are no reviews yet.</p>
-                    <ul>
-                        <li v-for="review in reviews" :key="review.name + review.rating">
-                            <p><strong>{{ review.name }}</strong></p>
-                            <p>Rating: {{ review.rating }}/5</p>
-                            <p>Recommend: {{ review.recommend === 'yes' ? 'Yes' : 'No' }}</p>
-                            <p>{{ review.review }}</p>
-                            <hr>
-                        </li>
-                    </ul>
-                </div>
-                <product-review @review-submitted="addReview"></product-review>
+                
+                <product-tabs 
+                    :reviews="reviews" 
+                    :details="details"
+                    :shipping="shipping">
+                </product-tabs>
             </div>
         </div>
     `,
@@ -201,7 +259,7 @@ Vue.component('product', {
             ],
             sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
             selectedVariant: 0,
-            reviews: []  
+            reviews: []
         }
     },
     
@@ -216,11 +274,6 @@ Vue.component('product', {
         
         updateProduct(index) {
             this.selectedVariant = index;
-        },
-        
-        addReview(productReview) {
-            this.reviews.push(productReview);
-            console.log('Добавлен отзыв:', productReview);
         }
     },
 
@@ -240,15 +293,22 @@ Vue.component('product', {
             } else {
                 return this.brand + ' ' + this.product + ' are not on sale';
             }
-        },  
-        
+        }, 
+
         shipping() {  
             if (this.premium) {
                 return "Free";
             } else {
-                return 2.99;
+                return "2.99";
             }
         }
+    },
+    
+    mounted() {
+        eventBus.$on('review-submitted', productReview => {
+            this.reviews.push(productReview);
+            console.log('Добавлен отзыв через eventBus:', productReview);
+        });
     }
 });
 
