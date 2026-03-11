@@ -1,4 +1,28 @@
 let eventBus = new Vue();
+const STORAGE_KEY = 'product-reviews';
+const storage = {
+    save(reviews) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(reviews));
+            console.log('Отзывы сохранены:', reviews);
+        } catch (e) {
+            console.error('Ошибка сохранения:', e);
+        }
+    },
+    load() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const reviews = JSON.parse(saved);
+                console.log('Отзывы загружены:', reviews);
+                return reviews;
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки:', e);
+        }
+        return [];
+    }
+};
 
 Vue.component('product-details', {
     props: {
@@ -91,7 +115,8 @@ Vue.component('product-review', {
                     name: this.name,
                     review: this.review,
                     rating: this.rating,
-                    recommend: this.recommend
+                    recommend: this.recommend,
+                    date: new Date().toLocaleString()
                 }
                 
                 eventBus.$emit('review-submitted', productReview);
@@ -133,10 +158,14 @@ Vue.component('product-tabs', {
             </ul>
             
             <div v-show="selectedTab === 'Reviews'" class="tab-content">
+                
+                
                 <p v-if="!reviews.length">There are no reviews yet.</p>
-                <ul v-else>
-                    <li v-for="review in reviews" :key="review.name + review.rating">
-                        <p><strong>{{ review.name }}</strong></p>
+                <ul v-else class="reviews-list">
+                    <li v-for="review in reviews" :key="review.name + review.rating + review.date">
+                        <p><strong>{{ review.name }}</strong> 
+                           <span class="review-date">{{ review.date }}</span>
+                        </p>
                         <p>Rating: {{ review.rating }}/5</p>
                         <p>Recommend: {{ review.recommend === 'yes' ? 'Yes' : 'No' }}</p>
                         <p>{{ review.review }}</p>
@@ -172,6 +201,13 @@ Vue.component('product-tabs', {
             tabs: ['Reviews', 'Make a Review', 'Details', 'Shipping'],
             selectedTab: 'Reviews',
             sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] 
+        }
+    },
+    methods: {
+        clearAllReviews() {
+            if (confirm('Удалить все отзывы?')) {
+                this.$emit('clear-reviews');
+            }
         }
     }
 });
@@ -222,7 +258,8 @@ Vue.component('product', {
                 <product-tabs 
                     :reviews="reviews" 
                     :details="details"
-                    :shipping="shipping">
+                    :shipping="shipping"
+                    @clear-reviews="clearAllReviews">
                 </product-tabs>
             </div>
         </div>
@@ -259,7 +296,7 @@ Vue.component('product', {
             ],
             sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
             selectedVariant: 0,
-            reviews: []
+            reviews: [] 
         }
     },
     
@@ -274,6 +311,17 @@ Vue.component('product', {
         
         updateProduct(index) {
             this.selectedVariant = index;
+        },
+        loadReviews() {
+            this.reviews = storage.load();
+        },
+        saveReviews() {
+            storage.save(this.reviews);
+        },
+        clearAllReviews() {
+            this.reviews = [];
+            this.saveReviews();
+            console.log('Все отзывы удалены');
         }
     },
 
@@ -294,7 +342,6 @@ Vue.component('product', {
                 return this.brand + ' ' + this.product + ' are not on sale';
             }
         }, 
-
         shipping() {  
             if (this.premium) {
                 return "Free";
@@ -304,11 +351,24 @@ Vue.component('product', {
         }
     },
     
+    created() {
+        this.loadReviews();
+    },
+    
     mounted() {
         eventBus.$on('review-submitted', productReview => {
             this.reviews.push(productReview);
-            console.log('Добавлен отзыв через eventBus:', productReview);
+            this.saveReviews(); 
+            console.log('Добавлен отзыв:', productReview);
         });
+    },
+    watch: {
+        reviews: {
+            handler() {
+                this.saveReviews();
+            },
+            deep: true 
+        }
     }
 });
 
@@ -330,6 +390,21 @@ let app = new Vue({
                 this.cart.splice(index, 1);
                 console.log('Удален товар с id:', id, 'Корзина:', this.cart);
             }
+        }
+    },
+    watch: {
+        cart: {
+            handler(newCart) {
+                localStorage.setItem('cart', JSON.stringify(newCart));
+            },
+            deep: true
+        }
+    },
+    
+    created() {
+        const savedCart = localStorage.getItem('cart');
+        if (savedCart) {
+            this.cart = JSON.parse(savedCart);
         }
     }
 });
